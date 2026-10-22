@@ -154,7 +154,7 @@ index 000000000..8c571ba22
 +
 +object ModelDownloads {
 +    private const val TAG = "ModelDownloads"
-+    const val INDEX_URL = "https://raw.githubusercontent.com/armandodollia/futo-keyboard-polyglot/main/models/index.json"
++    const val INDEX_URL = "https://raw.githubusercontent.com/erickgtzh/futo-keyboard-polyglot/main/models/index.json"
 +
 +    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 +

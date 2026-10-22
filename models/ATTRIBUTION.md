@@ -78,3 +78,28 @@ target is a teacher's rewrite (Gemma 3 or Gemma 4, see above).
 - Mastrokostas, Giarelis and Karacapilidis, *Social Media Topic Classification on Greek Reddit*, Information 15(9), 2024.
 - Qwen Team, *Qwen3 Technical Report*, 2025.
 - Gemma Team, Google, *Gemma 3 Technical Report*, 2025.
+
+## Spanish typing model (`typing-es`)
+
+Trained with `training/typing-lm` from `languages/es.yaml`. Only redistributable sources were used, and
+OpenSubtitles is deliberately excluded, so the weights can be published.
+
+| Dataset | Used for | Licence |
+|---|---|---|
+| [HuggingFaceFW/fineweb-2](https://huggingface.co/datasets/HuggingFaceFW/fineweb-2), config `spa_Latn` | Training text, the bulk of the corpus (capped at 6 GB raw) | ODC-By 1.0 — attribution required; no restriction on models trained on it |
+| [wikimedia/wikipedia](https://huggingface.co/datasets/wikimedia/wikipedia), `20231101.es` | Training text, ~0.5 GB raw | CC BY-SA 4.0 (the text). Credited here; the weights are not a derivative of the text, which is the same reading the Greek and Albanian typing models use (they ship as MIT) |
+| Local Spanish slang list (`languages/extra/es/*.txt`) | Optional informal register, kept out of the training globs | Written by the model's author |
+
+Layout geometry, and which letters are long-press alternates, come from
+[futo-org/futo-keyboard-layouts](https://github.com/futo-org/futo-keyboard-layouts) `Default/spanish.yaml`
+(Apache-2.0, "QWERTY+1"). The exporter and GGUF metadata layout follow
+[stamchry/greek-keyboard-lm](https://github.com/stamchry/greek-keyboard-lm) (Apache-2.0) through this repository's
+`training/typing-lm/export.py`. Tokenizer: [SentencePiece](https://github.com/google/sentencepiece) (Apache-2.0).
+Training: [Hugging Face Transformers](https://github.com/huggingface/transformers) (Apache-2.0).
+
+**Weights licence: MIT**, the same as `typing-el` and `typing-sq`.
+
+**Excluded on purpose:** OPUS OpenSubtitles `es`, whose text is copyrighted. `languages/es-personal.yaml` adds it for
+a personal-use model; anything trained with that file must not be published.
+
+This is a summary of the sources and their stated terms as of October 2026, not legal advice.

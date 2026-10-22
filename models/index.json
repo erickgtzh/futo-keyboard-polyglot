@@ -74,6 +74,19 @@
       "info_url": "https://huggingface.co/mandododo/albanian-typing-lm-futo"
     },
     {
+      "id": "typing-es",
+      "kind": "typing",
+      "locale": "es",
+      "title": "Spanish (Latin America) typing model v1",
+      "description": "Next-word prediction and autocorrect for FUTO's Spanish layout: ñ has its own key, and accented vowels are typed on the base key and restored by the model. Also turn on Settings > Developer > \"Allow transformer models on non QWERTY layouts\".",
+      "version": 1,
+      "size": 36488800,
+      "sha256": "340cddcf0673b7a7959662d28c49d839e446a6c5d6bbc9d6a93d23a8a50cd4fd",
+      "url": "https://github.com/erickgtzh/futo-keyboard-polyglot/releases/download/models-es-v1/es_typing_Q6_K.gguf",
+      "license": "MIT",
+      "info_url": "https://github.com/erickgtzh/futo-keyboard-polyglot/releases/tag/models-es-v1"
+    },
+    {
       "id": "dictionary-el",
       "kind": "dictionary",
       "locale": "el",
