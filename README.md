@@ -1,5 +1,10 @@
 # FUTO Keyboard Polyglot
 
+> **This is a personal fork** of [armandodollia/futo-keyboard-polyglot](https://github.com/armandodollia/futo-keyboard-polyglot),
+> signed with its own key, so it installs and updates separately from the original Polyglot builds. It adds patch 0008
+> (dictionary key boost fixes) and, later, a Spanish typing model. Patch 0008 was produced with AI assistance; see its
+> header. Not affiliated with or endorsed by FUTO or by the original Polyglot author.
+
 An automatically built, **modified** version of [FUTO Keyboard](https://keyboard.futo.org)
 ([source](https://github.com/futo-org/android-keyboard)) that makes FUTO's offline smart features work for languages
 beyond English, plus the tooling to train models for your own language. It is not an official FUTO release.
@@ -10,6 +15,8 @@ free, non-commercial sharing.
 - **Dictation cleanup:** after voice input, an LLM tidies the transcript or turns rambling into a short message, on a
   server you run, on the phone itself, or both in parallel (patches 0002 and 0003).
 - **Space bar touch area:** taps just above the space bar type a space instead of b/v/n (patch 0007).
+- **Dictionary key boost fixes:** the "smart key-hit detection" boost now works while Shift or Caps Lock is on, and
+  for accented words typed without their accent (patch 0008, this fork only).
 - **Training tooling** (`training/`): the typing model, voice model, dictionary and cleanup model for a new language.
 
 Languages built with it so far: Greek and Albanian (typing model, voice model, dictionary) and a Greek/Albanian/English
@@ -135,9 +142,9 @@ published, so phones stay on the last working build.
 
 ## Installing and updating with Obtainium
 
-Tap on the phone: https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/armandodollia/futo-keyboard-polyglot
+Tap on the phone: https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/erickgtzh/futo-keyboard-polyglot
 
-Or, in Obtainium: Add App → `https://github.com/armandodollia/futo-keyboard-polyglot` → Add. No token is needed.
+Or, in Obtainium: Add App → `https://github.com/erickgtzh/futo-keyboard-polyglot` → Add. No token is needed.
 Keep "Include prereleases" off. Each release has one APK plus a `.sha256` checksum.
 
 The signing key never changes. Updates only install over a build signed with the same key, which is why builds

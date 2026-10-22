@@ -1,0 +1,150 @@
+Fix the dictionary key boost on shifted keyboards and on accented words.
+
+Two independent defects in FUTO Keyboard 0.1.30's "smart key-hit detection":
+
+1. KeyDetector compared a lowercase dictionary code point set against key.getCode(),
+   but a shifted keyboard rebuilds every shiftable key with an uppercased code
+   (BaseKey#computeDataWithExtraAttrs), so the boost was silently disabled for the whole
+   word while Shift or Caps Lock was active. Fixed by lowercasing the key code before the
+   membership test; the extra lookup can only match letters that are already in the set.
+
+2. processGetValidNextCodePoints compared code points exactly, while the rest of the engine
+   compares base lowercase code points so that accent errors are tolerated. Typing an
+   unaccented spelling of an accented word therefore dropped the boost for the rest of the
+   word, and an accented child ("é") armed a code point that no base key has. Fixed with an
+   exact-first walk that only falls back to the base letter when no exact child exists, and by
+   emitting both the accented and the base form of every child.
+
+Measured with the offline harness in harness/ (Gaussian taps over the real Spanish layout,
+sigma 10 dp): plain words unchanged at 2.36 % error, caps-lock words from 5.29 % to 2.54 %,
+accented words typed unaccented from 4.54 % to 4.45 %, out-of-dictionary unchanged. No
+probability weighting is included: the harness shows weighted margins are worse without a
+calibrated weight source.
+
+Generated against FUTO Keyboard tag 0.1.30 (0246cbe). Applies after futo-keyboard-polyglot
+patches 0001-0007 with: git apply --3way --whitespace=nowarn
+
+Produced with AI assistance. The main agent was pi (gentle-shell) running deepseek-v4.1-flash,
+with review from two pi-fabric advisors (Claude Opus 5.5 and GPT-6.1-sol). FUTO's README does not
+accept AI generated pull requests, so read the fork's README before sending anything upstream.
+
+diff --git a/java/src/org/futo/inputmethod/keyboard/KeyDetector.java b/java/src/org/futo/inputmethod/keyboard/KeyDetector.java
+index dbfc61c..af5103c 100644
+--- a/java/src/org/futo/inputmethod/keyboard/KeyDetector.java
++++ b/java/src/org/futo/inputmethod/keyboard/KeyDetector.java
+@@ -88,6 +88,25 @@ public class KeyDetector {
+         return false;
+     }
+ 
++    /**
++     * Tells whether the given key code is one of the boosted next code points.
++     *
++     * The boosted set comes from the dictionary and is lowercase, but a shifted keyboard rebuilds
++     * every shiftable key with an uppercased code (see BaseKey#computeDataWithExtraAttrs), so a
++     * case sensitive lookup silently disabled boosting for the whole word whenever Shift or Caps
++     * Lock was active. Lowercasing here can only add matches for keys that are already letters of
++     * the boosted set.
++     */
++    private boolean isBoostedCodePoint(final int code) {
++        if (mBoostedCodePoints == null || mBoostedCodePoints.isEmpty()) {
++            return false;
++        }
++        if (mBoostedCodePoints.contains(code)) {
++            return true;
++        }
++        return mBoostedCodePoints.contains(Character.toLowerCase(code));
++    }
++
+     /**
+      * Detect the key whose hitbox the touch point is in.
+      *
+@@ -109,7 +128,7 @@ public class KeyDetector {
+ 
+         if(mBoostedCodePoints != null && !mBoostedCodePoints.isEmpty()) {
+             for (final Key key : mKeyboard.getNearestKeys(touchX, touchY)) {
+-                if (mBoostedCodePoints.contains(key.getCode())) {
++                if (isBoostedCodePoint(key.getCode())) {
+                     // Using min distance to edge for boosted codepoints,
+                     // versus min distance to center for non boosted ones.
+                     final float distance = key.distanceToEdge(touchX, touchY);
+diff --git a/native/jni/src/suggest/core/suggest.cpp b/native/jni/src/suggest/core/suggest.cpp
+index d543111..742d770 100644
+--- a/native/jni/src/suggest/core/suggest.cpp
++++ b/native/jni/src/suggest/core/suggest.cpp
+@@ -29,6 +29,7 @@
+ #include "suggest/core/result/suggestions_output_utils.h"
+ #include "suggest/core/session/dic_traverse_session.h"
+ #include "suggest/core/suggest_options.h"
++#include "utils/char_utils.h"
+ #include "utils/profiler.h"
+ #include "src/suggest/core/dictionary/itrie.h"
+ 
+@@ -467,6 +468,15 @@ void Suggest::createNextWordDicNode(DicTraverseSession *traverseSession, DicNode
+ 
+ 
+ 
++// Appends a code point unless it is already there, so the accented and base forms of the same
++// child do not take two slots of the caller's buffer.
++static void writeValidNextCodePoint(int *outputCodePoints, int &head, const int codePoint) {
++    for(int i=0; i<head; ++i) {
++        if(outputCodePoints[i] == codePoint) return;
++    }
++    outputCodePoints[head++] = codePoint;
++}
++
+ void processGetValidNextCodePoints(
+         DicTraverseSession *traverseSession,
+         const int *inputCodePoints,
+@@ -493,16 +503,31 @@ void processGetValidNextCodePoints(
+         DicNodeUtils::getAllChildDicNodes(activeNode.get(),
+             traverseSession->getDictionaryStructurePolicy(), &childDicNodes);
+ 
++        // Exact code point first, so the walk behaves exactly as it did before boosting existed.
++        // Only when the typed code point has no exact child do we accept an accent variant, so
++        // typing "cancion" still reaches the "canción" node instead of dropping the boost for the
++        // rest of the word. DictionaryUtils::processChildDicNodes does the same for suggestions.
++        const int inputCodePoint = inputCodePoints[depth];
++        const int baseInputCodePoint = CharUtils::toBaseLowerCase(inputCodePoint);
++        DicNode *matchedDicNode = nullptr;
++        bool matchedExactCodePoint = false;
+         nodeFound = false;
+         int size = childDicNodes.getSizeAndLock();
+         for(int i=0; i<size; ++i) {
+             DicNode *const childDicNode = childDicNodes[i];
+-            if(childDicNode->getNodeCodePoint() == inputCodePoints[depth]) {
+-                activeNode = std::make_unique<DicNode>(*childDicNode);
+-                nodeFound = true;
++            const int childCodePoint = childDicNode->getNodeCodePoint();
++            if(childCodePoint == inputCodePoint) {
++                matchedDicNode = childDicNode;
++                matchedExactCodePoint = true;
++            } else if(!matchedExactCodePoint
++                    && CharUtils::toBaseLowerCase(childCodePoint) == baseInputCodePoint) {
++                matchedDicNode = childDicNode;
+             }
+         }
+-
++        if(matchedDicNode != nullptr) {
++            activeNode = std::make_unique<DicNode>(*matchedDicNode);
++            nodeFound = true;
++        }
+ 
+         if(!nodeFound) break;
+     }
+@@ -522,9 +547,15 @@ void processGetValidNextCodePoints(
+         int size = childDicNodes.getSizeAndLock();
+         for(int i=0; i<size; ++i) {
+             DicNode *const childDicNode = childDicNodes[i];
++            const int childCodePoint = childDicNode->getNodeCodePoint();
+ 
+-            outputCodePoints[head++] = childDicNode->getNodeCodePoint();
++            // Emit the accented form and its base form: the IME compares these against the keys
++            // that are actually on the layout, and the Spanish layout has an "e" key but no "é".
++            if(head == outputCodePointSize) break;
++            writeValidNextCodePoint(outputCodePoints, head, CharUtils::toLowerCase(childCodePoint));
+             if(head == outputCodePointSize) break;
++            writeValidNextCodePoint(outputCodePoints, head,
++                    CharUtils::toBaseLowerCase(childCodePoint));
+         }
+     }
+ }
